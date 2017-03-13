@@ -1,0 +1,9 @@
+#!/bin/sh
+#this is the first script called by init process
+/bin/mount -a
+mdev -s
+
+
+
+
+

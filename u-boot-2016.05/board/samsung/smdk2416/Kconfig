@@ -1,0 +1,15 @@
+if TARGET_SMDK2416
+
+config SYS_BOARD
+	default "smdk2416"
+
+config SYS_VENDOR
+	default "samsung"
+
+config SYS_SOC
+	default "s3c24xx"
+
+config SYS_CONFIG_NAME
+	default "smdk2416"
+
+endif
