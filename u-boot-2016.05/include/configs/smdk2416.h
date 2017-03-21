@@ -30,8 +30,6 @@
 #define CONFIG_S3C24XX		/* This is a SAMSUNG S3C24xx-type SoC */
 #define CONFIG_S3C2416		/* specifically a SAMSUNG S3C2416 SoC */
 #define CONFIG_SMDK2416		/* on a SAMSUNG SMDK2416 Board */
-
-
 #if 1
 #define CONFIG_AUTO_COMPLETE
 #if 1
@@ -39,7 +37,8 @@
 #endif
 #endif
 
-
+#define CONFIG_OF_LIBFDT
+#define CONFIG_SYS_BOOTMAPSZ
 #if 0
 /*running in SDRAM JTAG */
 /*#define CONFIG_SKIP_LOWLEVEL_INIT*/
