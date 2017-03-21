@@ -2067,7 +2067,7 @@ config FB_S3C2410_DEBUG
 	  through sysfs
 
 config FB_MYS3C2416
-	tristate "S3C2416 LCD framebuffer support"
+	tristate "MY S3C2416 LCD framebuffer support"
 	depends on FB && ARCH_S3C24XX
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
@@ -2083,7 +2083,7 @@ config FB_MYS3C2416
 
 	  If unsure, say N.
 config FB_MYS3C2416_DEBUG
-	bool "S3C2416 lcd debug messages"
+	bool "MY S3C2416 lcd debug messages"
 	depends on FB_MYS3C2416
 	help
 	  Turn on debugging messages. Note that you can set/unset at run time
