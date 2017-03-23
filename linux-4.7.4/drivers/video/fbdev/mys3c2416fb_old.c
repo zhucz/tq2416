@@ -42,7 +42,37 @@
 //#define MYLCD_GPBCON	((volatile unsigned long *)0x56000020)
 //#define MYLCD_GPDCON	((volatile unsigned long *)0x56000030)
 
-static unsigned long *mylcd_config_base;
+static unsigned long *mylcd_vidcon0;
+static unsigned long *mylcd_vidcon1;
+static unsigned long *mylcd_vidtcon0;
+static unsigned long *mylcd_vidtcon1;
+static unsigned long *mylcd_vidtcon2;
+static unsigned long *mylcd_wincon0;
+static unsigned long *mylcd_wincon1;
+static unsigned long *mylcd_vidosd0a;
+static unsigned long *mylcd_vidosd0b;
+
+static unsigned long *mylcd_vidosd1a;
+static unsigned long *mylcd_vidosd1b;
+static unsigned long *mylcd_vidosd1c;
+
+static unsigned long *mylcd_vidw00add0b0;
+static unsigned long *mylcd_vidw00add0b1;
+
+static unsigned long *mylcd_vidw01add0;
+
+static unsigned long *mylcd_vidw00add1b0;
+static unsigned long *mylcd_vidw00add1b1;
+
+static unsigned long *mylcd_vidw01add1;
+
+static unsigned long *mylcd_vidw00add2b0;
+static unsigned long *mylcd_vidw00add2b1;
+
+static unsigned long *mylcd_vidw01add2;
+
+
+
 
 static unsigned long *mylcd_gpbcon;
 static unsigned long *mylcd_gpdcon;
@@ -111,7 +141,39 @@ static int __init mys3c2416_lcd_init(void)
 
 
 	//初始化LCD寄存器
-	mylcd_config_base = ioremap(0x4C800000,3072)
+	mylcd_vidcon0 		= ioremap(0x4C800000,4);
+	mylcd_vidcon1 		= ioremap(0x4C800004,4);
+	mylcd_vidtcon0		= ioremap(0x4C800008,4);
+	mylcd_vidtcon1		= ioremap(0x4C80000c,4);
+	mylcd_vidtcon2		= ioremap(0x4C800010,4);
+	mylcd_wincon0		= ioremap(0x4C800014,4);
+	mylcd_wincon1		= ioremap(0x4C800018,4);
+	mylcd_vidosd0a		= ioremap(0x4C800028,4);
+	mylcd_vidosd0b		= ioremap(0x4C80002c,4);
+
+	mylcd_vidosd1a		= ioremap(0x4C800034,4);
+	mylcd_vidosd1b		= ioremap(0x4C800038,4);
+	mylcd_vidosd1c		= ioremap(0x4C80003c,4);
+
+	mylcd_vidw00add0b0	= ioremap(0x4C800064,4);
+	mylcd_vidw00add0b1	= ioremap(0x4C800068,4);
+
+	mylcd_vidw01add0	= ioremap(0x4C80006c,4);
+
+	mylcd_vidw00add1b0	= ioremap(0x4C80007c,4);
+	mylcd_vidw00add1b1	= ioremap(0x4C800080,4);
+
+	mylcd_vidw01add1	= ioremap(0x4C800084,4);
+
+	mylcd_vidw00add2b0	= ioremap(0x4C800094,4);
+	mylcd_vidw00add2b1	= ioremap(0x4C800098,4);
+
+	mylcd_vidw01add2	= ioremap(0x4C80009c,4);
+
+
+	*mylcd_vidcon0 = (0<<0)|(0<<2)|(1<<4)|(1<<5)|(2<<6)|(0<<12)|(0<<13)|(0<<22);
+	*mylcd_vidcon1 = (0<<4)|(1<<5)|(1<<6)|(0<<7)
+
 
 
 }
