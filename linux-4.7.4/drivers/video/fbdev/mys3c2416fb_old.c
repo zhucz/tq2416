@@ -74,10 +74,14 @@ static unsigned long *mylcd_vidw01add2;
 
 
 
-static unsigned long *mylcd_gpbcon;
-static unsigned long *mylcd_gpdcon;
+static unsigned long *mylcd_gpbcon;//10
+static unsigned long *mylcd_gpbdat;//14
 
+static unsigned long *mylcd_gpccon;//20
+static unsigned long *mylcd_gpcdat;//24
 
+static unsigned long *mylcd_gpdcon;//30
+static unsigned long *mylcd_gpddat;//34
 
 static struct fb_info *mys3c2416_lcd;
 
@@ -90,6 +94,28 @@ static struct fb_ops mys3c2416_lcdfb_ops = {
 };
 
 
+void LCD_Enable(int Enable)
+{
+	if(Enable){
+		*mylcd_vidcon0 |= (0x3 << 0);
+	}else{
+		*mylcd_vidcon0 &= ~(0x3 << 0);
+	}
+}
+
+
+void LCD_BackLight(int On)
+{
+	*mylcd_gpbcon &= ~(0x3 << 0);
+	*mylcd_gpbcon |=  (0x1 << 0);
+
+	if(On){
+		*mylcd_gpbdat |= (0x1 << 0);
+	}else{
+		*mylcd_gpbdat &= ~(0x1 << 0);
+	}
+}
+
 static int __init mys3c2416_lcd_init(void)
 {
 	struct clk *mys3c2416_clk;
@@ -99,7 +125,7 @@ static int __init mys3c2416_lcd_init(void)
 	//初始化fb_info
 	//2.1初始化LCD固定参数信息
 	strcpy(mys3c2416_lcd->fix.id, "mys3c2416_lcd");
-	mys3c2416_lcd->fix.smem_len = 480*272*2
+	mys3c2416_lcd->fix.smem_len = 480*272*2;
 	mys3c2416_lcd->fix.type = FB_TYPE_PACKED_PIXELS;
 	mys3c2416_lcd->fix.visual = FB_VISUAL_TRUECOLOR;
 	mys3c2416_lcd->fix.line_length = 480*2;
@@ -126,9 +152,17 @@ static int __init mys3c2416_lcd_init(void)
 	mys3c2416_lcd->screen_size = 480*272*2;
 
 	//gpio的复用处理
-	mylcd_gpbcon = ioremap(0x56000020,16);
-	mylcd_gpdcon = ioremap(0x56000030,16);
+	mylcd_gpbcon = ioremap(0x56000010,4);
+	mylcd_gpbdat = ioremap(0x56000014,4);
 
+	mylcd_gpdcon = ioremap(0x56000020,4);
+	mylcd_gpcdat = ioremap(0x56000024,4);
+
+	mylcd_gpdcon = ioremap(0x56000030,4);
+	mylcd_gpddat = ioremap(0x56000034,4);
+
+//	*mylcd_gpbcon = 
+//	*mylcd_gpdcon =
 
 	//内核为了实现电源管理，对于CPU的片上I2C，每一个的时钟都是独立的，
 	//内核通过链表的形式来进行管理获取内核LCD时钟
@@ -171,25 +205,64 @@ static int __init mys3c2416_lcd_init(void)
 	mylcd_vidw01add2	= ioremap(0x4C80009c,4);
 
 
-	*mylcd_vidcon0 = (0<<0)|(0<<2)|(1<<4)|(1<<5)|(2<<6)|(0<<12)|(0<<13)|(0<<22);
-	*mylcd_vidcon1 = (0<<4)|(1<<5)|(1<<6)|(0<<7)
-
-
 
 	//跟具体CPU相关
 	
-
-
+	//选择HCLK=133M，3分频得到VCLK=33.3M RGB并口格式(RGB)，
+	//暂不启动控制逻辑
+	*mylcd_vidcon0 = (0<<0)|(0<<2)|(1<<4)|(1<<5)|(2<<6)|(0<<12)|(0<<13)|(0<<22);
+	//VCLK下降沿锁存数据，行场同步信号低激活，数据使能高有效
+	*mylcd_vidcon1 = (0<<4)|(1<<5)|(1<<6)|(0<<7);
+	*mylcd_vidtcon0 = ((S3CFB_VBP-1)<<16)|((S3CFB_VFP-1)<<8)|((S3CFB_VSW-1)<<0);
+	*mylcd_vidtcon1 = ((S3CFB_HBP-1)<<16)|((S3CFB_HFP-1)<<8)|((S3CFB_HSW-1)<<0);
+    
+	//设置屏幕像素尺寸
+	*mylcd_vidtcon2 = ((S3CFB_VRES-1)<<11)|((S3CFB_HRES-1)<<0);
 
 	//设置通用的时间参数信息
+	//特定LCD寄存器的初始化
+	//设置OSD图像与屏幕尺寸一致
+	//
+	*mylcd_vidosd0a = (0<<11)|(0<<0);
+	*mylcd_vidosd0b = ((S3CFB_HRES-1)<<11)|((S3CFB_VRES-1)<<0);
+	*mylcd_vidosd1a = (0<<11)|(0<<0);
+	*mylcd_vidosd1b = ((S3CFB_HRES-1)<<11)|((S3CFB_VRES-1)<<0);
+
+	//alpha混合方式，基色匹配时全透明，未匹配部分完全不透明
+	*mylcd_vidosd1c = 0xfff000;
+
+
+	//让内核帮你分配一个显存的起始物理地址，并且分配对应物理地址的
+	//内核虚拟地址
+	//起始物理地址：smem_start
+	//起始内核虚拟地址：screen_base
 	
+	mys3c2416_lcd->screen_base = dma_alloc_writecombine(NULL, \
+			mys3c2416_lcd->fix.smem_len,  					  \
+			(dma_addr_t *)&mys3c2416_lcd->fix.smem_start,     \
+			GFP_KERNEL);
 
-//特定LCD寄存器的初始化
+
+	//通用的硬件初始化
+	//告诉CPU显存的起始物理地址和起始结束地址
+	//将这两个地址设置到LCD对应的寄存器中即可
+	*mylcd_vidw00add0b0 = mys3c2416_lcd->fix.smem_start;
+	*mylcd_vidw00add1b0 = mys3c2416_lcd->fix.smem_start + mys3c2416_lcd->fix.smem_len;
 
 
+	//不使用虚拟屏幕
+	*mylcd_vidw00add2b0 = (0<<13)|((S3CFB_HRES*2)<<0);
+	//启动LCD控制其，等待用户访问操作显存
+	*mylcd_wincon0 |= (1 << 0);
 
-		//让内核帮你分配一个显存的
+	LCD_Enable(1);
+	LCD_BackLight(1);
 
+
+	//向核心层注册fb_info
+	
+	register_framebuffer(mys3c2416_lcd);
+	return 0;
 
 
 
@@ -198,8 +271,46 @@ static int __init mys3c2416_lcd_init(void)
 
 static void __exit mys3c2416_lcd_exit(void)
 {
+	unregister_framebuffer(mys3c2416_lcd);
 
+	dma_free_writecombine(NULL,               \
+			mys3c2416_lcd->fix.smem_len,      \
+			mys3c2416_lcd->screen_base,       \
+			mys3c2416_lcd->fix.smem_start);
 
+	iounmap(mylcd_gpbcon);
+	iounmap(mylcd_gpdcon);
+
+	iounmap(mylcd_vidcon0);
+	iounmap(mylcd_vidcon1);	
+	iounmap(mylcd_vidtcon0);		
+	iounmap(mylcd_vidtcon1);	
+	iounmap(mylcd_vidtcon2);	
+	iounmap(mylcd_wincon0);		
+	iounmap(mylcd_wincon1);	
+	iounmap(mylcd_vidosd0a);		
+	iounmap(mylcd_vidosd0b);	
+
+	iounmap(mylcd_vidosd1a);		
+	iounmap(mylcd_vidosd1b);		
+	iounmap(mylcd_vidosd1c);	
+
+	iounmap(mylcd_vidw00add0b0);	
+	iounmap(mylcd_vidw00add0b1);	
+
+	iounmap(mylcd_vidw01add0);	
+
+	iounmap(mylcd_vidw00add1b0);
+	iounmap(mylcd_vidw00add1b1);	
+
+	iounmap(mylcd_vidw01add1);	
+
+	iounmap(mylcd_vidw00add2b0);	
+	iounmap(mylcd_vidw00add2b1);	
+
+	iounmap(mylcd_vidw01add2);
+
+	framebuffer_release(mys3c2416_lcd);
 }
 
 module_init(mys3c2416_lcd_init);
