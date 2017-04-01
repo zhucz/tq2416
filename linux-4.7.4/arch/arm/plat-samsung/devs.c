@@ -160,10 +160,10 @@ struct platform_device s3c_device_camif = {
 #ifdef CONFIG_S3C_DEV_FB 
 #if 1
 static struct resource s3c_fb_resource[] = {
-//	[0] = DEFINE_RES_MEM(S3C_PA_FB, SZ_16K),
-	[0] = DEFINE_RES_MEM(S3C24XX_PA_LCD, SZ_16K),
-//	[1] = DEFINE_RES_IRQ(IRQ_LCD_VSYNC),
-	[1] = DEFINE_RES_IRQ(IRQ_LCD_FIFO),
+	[0] = DEFINE_RES_MEM(S3C_PA_FB, SZ_16K),
+//	[0] = DEFINE_RES_MEM(S3C24XX_PA_LCD, SZ_16K),
+	[1] = DEFINE_RES_IRQ(IRQ_LCD_VSYNC),
+//	[1] = DEFINE_RES_IRQ(IRQ_LCD_FIFO),
 	[2] = DEFINE_RES_IRQ(IRQ_LCD_SYSTEM),
 };
 

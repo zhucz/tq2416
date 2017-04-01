@@ -42,46 +42,46 @@
 //#define MYLCD_GPBCON	((volatile unsigned long *)0x56000020)
 //#define MYLCD_GPDCON	((volatile unsigned long *)0x56000030)
 
-static unsigned long *mylcd_vidcon0;
-static unsigned long *mylcd_vidcon1;
-static unsigned long *mylcd_vidtcon0;
-static unsigned long *mylcd_vidtcon1;
-static unsigned long *mylcd_vidtcon2;
-static unsigned long *mylcd_wincon0;
-static unsigned long *mylcd_wincon1;
-static unsigned long *mylcd_vidosd0a;
-static unsigned long *mylcd_vidosd0b;
+static unsigned long *mylcd_vidcon0 = NULL;
+static unsigned long *mylcd_vidcon1 = NULL;
+static unsigned long *mylcd_vidtcon0 = NULL;
+static unsigned long *mylcd_vidtcon1 = NULL;
+static unsigned long *mylcd_vidtcon2 = NULL;
+static unsigned long *mylcd_wincon0 = NULL;
+static unsigned long *mylcd_wincon1 = NULL;
+static unsigned long *mylcd_vidosd0a = NULL;
+static unsigned long *mylcd_vidosd0b = NULL;
 
-static unsigned long *mylcd_vidosd1a;
-static unsigned long *mylcd_vidosd1b;
-static unsigned long *mylcd_vidosd1c;
+static unsigned long *mylcd_vidosd1a = NULL;
+static unsigned long *mylcd_vidosd1b = NULL;
+static unsigned long *mylcd_vidosd1c = NULL;
 
-static unsigned long *mylcd_vidw00add0b0;
-static unsigned long *mylcd_vidw00add0b1;
+static unsigned long *mylcd_vidw00add0b0 = NULL;
+static unsigned long *mylcd_vidw00add0b1 = NULL;
 
-static unsigned long *mylcd_vidw01add0;
+static unsigned long *mylcd_vidw01add0 = NULL;
 
-static unsigned long *mylcd_vidw00add1b0;
-static unsigned long *mylcd_vidw00add1b1;
+static unsigned long *mylcd_vidw00add1b0 = NULL;
+static unsigned long *mylcd_vidw00add1b1 = NULL;
 
-static unsigned long *mylcd_vidw01add1;
+static unsigned long *mylcd_vidw01add1 = NULL;
 
-static unsigned long *mylcd_vidw00add2b0;
-static unsigned long *mylcd_vidw00add2b1;
+static unsigned long *mylcd_vidw00add2b0 = NULL;
+static unsigned long *mylcd_vidw00add2b1 = NULL;
 
-static unsigned long *mylcd_vidw01add2;
-
-
+static unsigned long *mylcd_vidw01add2 = NULL;
 
 
-static unsigned long *mylcd_gpbcon;//10
-static unsigned long *mylcd_gpbdat;//14
 
-static unsigned long *mylcd_gpccon;//20
-static unsigned long *mylcd_gpcdat;//24
 
-static unsigned long *mylcd_gpdcon;//30
-static unsigned long *mylcd_gpddat;//34
+static unsigned long *mylcd_gpbcon = NULL;//10
+static unsigned long *mylcd_gpbdat = NULL;//14
+
+static unsigned long *mylcd_gpccon = NULL;//20
+static unsigned long *mylcd_gpcdat = NULL;//24
+
+static unsigned long *mylcd_gpdcon = NULL;//30
+static unsigned long *mylcd_gpddat = NULL;//34
 
 static struct fb_info *mys3c2416_lcd;
 
@@ -118,8 +118,13 @@ void LCD_BackLight(int On)
 
 static int __init mys3c2416_lcd_init(void)
 {
-	struct clk *mys3c2416_clk;
 
+	struct clk *mys3c2416_clk;
+	unsigned long			clk_rate;
+	int ret = 0;
+
+
+	printk("%s : %d \n",__func__,__LINE__);
 	//分配fb_info
 	mys3c2416_lcd = framebuffer_alloc(0,NULL);
 	//初始化fb_info
@@ -155,7 +160,7 @@ static int __init mys3c2416_lcd_init(void)
 	mylcd_gpbcon = ioremap(0x56000010,4);
 	mylcd_gpbdat = ioremap(0x56000014,4);
 
-	mylcd_gpdcon = ioremap(0x56000020,4);
+	mylcd_gpccon = ioremap(0x56000020,4);
 	mylcd_gpcdat = ioremap(0x56000024,4);
 
 	mylcd_gpdcon = ioremap(0x56000030,4);
@@ -166,13 +171,24 @@ static int __init mys3c2416_lcd_init(void)
 
 	//内核为了实现电源管理，对于CPU的片上I2C，每一个的时钟都是独立的，
 	//内核通过链表的形式来进行管理获取内核LCD时钟
-	mys3c2416_clk = clk_get(NULL, "lcd");
-	if(!mys3c2416_clk || IS_ERR(mys3c2416_clk)){
 	
-		printk(KERN_INFO "Failed to get lcd clock source \n");
-	}
-	clk_enable(mys3c2416_clk);
+	printk("%s : %d \n",__func__,__LINE__);
 
+
+	mys3c2416_clk = clk_get(NULL, "lcd");
+	if(IS_ERR(mys3c2416_clk)){
+		printk(KERN_INFO "%s : %d Failed to get lcd clock source \n",__func__,__LINE__);
+	}
+	printk(KERN_INFO "%s : %d info->clk = %ld \n",__func__,__LINE__,mys3c2416_clk);
+	clk_prepare_enable(mys3c2416_clk);
+	printk("got and enabled clock\n");
+	usleep_range(1000, 1100);
+
+	clk_rate = clk_get_rate(mys3c2416_clk);
+	printk("%s : %d info->clk_rate = %ld\n",__func__,__LINE__,clk_rate);
+
+
+	printk("%s : %d \n",__func__,__LINE__);
 
 	//初始化LCD寄存器
 	mylcd_vidcon0 		= ioremap(0x4C800000,4);
@@ -204,6 +220,7 @@ static int __init mys3c2416_lcd_init(void)
 
 	mylcd_vidw01add2	= ioremap(0x4C80009c,4);
 
+	printk("%s : %d \n",__func__,__LINE__);
 
 
 	//跟具体CPU相关
@@ -231,6 +248,7 @@ static int __init mys3c2416_lcd_init(void)
 	//alpha混合方式，基色匹配时全透明，未匹配部分完全不透明
 	*mylcd_vidosd1c = 0xfff000;
 
+	printk("%s : %d \n",__func__,__LINE__);
 
 	//让内核帮你分配一个显存的起始物理地址，并且分配对应物理地址的
 	//内核虚拟地址
@@ -242,6 +260,8 @@ static int __init mys3c2416_lcd_init(void)
 			(dma_addr_t *)&mys3c2416_lcd->fix.smem_start,     \
 			GFP_KERNEL);
 
+
+	printk("%s : %d mys3c2416->screen_base = %#x\n",__func__,__LINE__,mys3c2416_lcd->screen_base);
 
 	//通用的硬件初始化
 	//告诉CPU显存的起始物理地址和起始结束地址
@@ -261,16 +281,21 @@ static int __init mys3c2416_lcd_init(void)
 
 	//向核心层注册fb_info
 	
-	register_framebuffer(mys3c2416_lcd);
+#if 1
+	ret = register_framebuffer(mys3c2416_lcd);
+	if (ret < 0) {
+		printk(KERN_INFO "Failed to register framebuffer device: %d\n",ret);
+	}
+	printk(KERN_INFO "%s : %d register_framebuffer\n",__func__,__LINE__);
+
+#endif
 	return 0;
-
-
-
 }
 
 
 static void __exit mys3c2416_lcd_exit(void)
 {
+	printk("%s : %d \n",__func__,__LINE__);
 	unregister_framebuffer(mys3c2416_lcd);
 
 	dma_free_writecombine(NULL,               \
@@ -310,7 +335,11 @@ static void __exit mys3c2416_lcd_exit(void)
 
 	iounmap(mylcd_vidw01add2);
 
+	printk("%s : %d \n",__func__,__LINE__);
+#if 0
 	framebuffer_release(mys3c2416_lcd);
+	printk("%s : %d \n",__func__,__LINE__);
+#endif
 }
 
 module_init(mys3c2416_lcd_init);
