@@ -942,8 +942,8 @@ static int mys3c2416fb_init_registers(struct fb_info *info)
 	tmp_gpdup  = readl(S3C2416_GPDUP);
 	tmp_gpdcon = readl(S3C2416_GPDCON);
 	tmp_gpcdat = readl(S3C2416_GPCDAT);
-//	tmp_gpcdat |= (1 << 0);
-//	writel(tmp_gpcdat,S3C2416_GPCDAT);
+	tmp_gpcdat |= (1 << 0);
+	writel(tmp_gpcdat,S3C2416_GPCDAT);
 
 
 	dprintk(KERN_INFO "%s : %d tmp_gpcup = %#x  \n",__func__,__LINE__,tmp_gpcup);

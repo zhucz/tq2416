@@ -23,6 +23,9 @@ int *fb32 = NULL;
 int x = 0;
 int y = 0;
 long location = 0;
+
+
+
 int main(int argc, char **argv)
 {
 	// open framebuffer device
