@@ -159,13 +159,20 @@ struct platform_device s3c_device_camif = {
 
 #ifdef CONFIG_S3C_DEV_FB 
 #if 1
+#if 1
 static struct resource s3c_fb_resource[] = {
-//	[0] = DEFINE_RES_MEM(S3C_PA_FB, SZ_16K),
 	[0] = DEFINE_RES_MEM(S3C24XX_PA_LCD, SZ_16K),
-//	[1] = DEFINE_RES_IRQ(IRQ_LCD_VSYNC),
 	[1] = DEFINE_RES_IRQ(IRQ_LCD_FIFO),
 	[2] = DEFINE_RES_IRQ(IRQ_LCD_SYSTEM),
 };
+#else
+static struct resource s3c_fb_resource[] = {
+	[0] = DEFINE_RES_MEM(S3C_PA_FB, SZ_16K),
+	[1] = DEFINE_RES_IRQ(IRQ_LCD_VSYNC),//16
+	[2] = DEFINE_RES_IRQ(IRQ_LCD_FIFO),//56
+	[3] = DEFINE_RES_IRQ(IRQ_LCD_SYSTEM),//15
+};
+#endif
 
 struct platform_device s3c_device_fb = {
 	.name		= "s3c-fb",
@@ -651,11 +658,22 @@ void __init samsung_keypad_set_platdata(struct samsung_keypad_platdata *pd)
 /* LCD Controller */
 
 #ifdef CONFIG_PLAT_S3C2416
+#if 0
 static struct resource mys3c2416_lcd_resource[] = {
 	[0] = DEFINE_RES_MEM(S3C_PA_FB,S3C24XX_SZ_LCD),
 	[1] = DEFINE_RES_IRQ(IRQ_S3C2416_LCD3),
 //	[1] = DEFINE_RES_IRQ(IRQ_LCD),
 };
+#else
+static struct resource mys3c2416_lcd_resource[] = {
+	[0] = DEFINE_RES_MEM(S3C_PA_FB, SZ_16K),
+	[1] = DEFINE_RES_IRQ(IRQ_LCD_VSYNC),   //16
+	[2] = DEFINE_RES_IRQ(IRQ_LCD_FIFO),    //56
+	[3] = DEFINE_RES_IRQ(IRQ_LCD_SYSTEM),  //15
+};
+#endif
+
+
 
 struct platform_device mys3c2416_device_lcd = {
 	.name = "mys3c2416-lcd",
@@ -677,10 +695,12 @@ void __init mys3c2416_fb_set_platdata(struct mys3c2416fb_mach_info *pd)
 	if (npd) {
 		npd->displays = kmemdup(pd->displays, sizeof(struct mys3c2416fb_display) * npd->num_displays, GFP_KERNEL);
 		if (!npd->displays)
-			printk(KERN_ERR "no memory for LCD display data\n");
+			printk(KERN_INFO "no memory for LCD display data\n");
 	} else {
-		printk(KERN_ERR "no memory for LCD platform data\n");
+		printk(KERN_INFO "no memory for LCD platform data\n");
 	}
+	
+	printk(KERN_INFO "%s : %d \n",__func__,__LINE__);
 }
 
 #endif

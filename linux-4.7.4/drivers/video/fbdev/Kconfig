@@ -2037,6 +2037,8 @@ config FB_S3C
 
 	  Currently the support is only for the S3C6400 and S3C6410 SoCs.
 
+
+
 config FB_S3C_DEBUG_REGWRITE
        bool "Debug register writes"
        depends on FB_S3C
@@ -2082,6 +2084,7 @@ config FB_MYS3C2416
 	  say M here and read <file:Documentation/kbuild/modules.txt>.
 
 	  If unsure, say N.
+
 config FB_MYS3C2416_DEBUG
 	bool "MY S3C2416 lcd debug messages"
 	depends on FB_MYS3C2416

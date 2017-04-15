@@ -37,10 +37,7 @@
 /* 0x4C800000 ----  0x4C800BFC
  * 0xBFC = 3069字节 3072
  * */
-//#define MYLCD_VIDCON0	((volatile unsigned long *)0x4C800000)
 
-//#define MYLCD_GPBCON	((volatile unsigned long *)0x56000020)
-//#define MYLCD_GPDCON	((volatile unsigned long *)0x56000030)
 
 static unsigned long *mylcd_vidcon0;
 static unsigned long *mylcd_vidcon1;
@@ -119,6 +116,8 @@ void LCD_BackLight(int On)
 static int __init mys3c2416_lcd_init(void)
 {
 	struct clk *mys3c2416_clk;
+	unsigned long			clk_rate;
+
 
 	//分配fb_info
 	mys3c2416_lcd = framebuffer_alloc(0,NULL);
@@ -155,24 +154,31 @@ static int __init mys3c2416_lcd_init(void)
 	mylcd_gpbcon = ioremap(0x56000010,4);
 	mylcd_gpbdat = ioremap(0x56000014,4);
 
-	mylcd_gpdcon = ioremap(0x56000020,4);
+	mylcd_gpccon = ioremap(0x56000020,4);
 	mylcd_gpcdat = ioremap(0x56000024,4);
 
 	mylcd_gpdcon = ioremap(0x56000030,4);
 	mylcd_gpddat = ioremap(0x56000034,4);
 
-//	*mylcd_gpbcon = 
-//	*mylcd_gpdcon =
+	// 1010 1010 1010 1010 0000 0010 1010 1010   
+	*mylcd_gpbcon = 0xAAAA02AA;
+    // 1010 1010 1010 1010 1010 1010 1010 1010
+	*mylcd_gpdcon = 0xAAAAAAAA;
 
 	//内核为了实现电源管理，对于CPU的片上I2C，每一个的时钟都是独立的，
 	//内核通过链表的形式来进行管理获取内核LCD时钟
 	mys3c2416_clk = clk_get(NULL, "lcd");
-	if(!mys3c2416_clk || IS_ERR(mys3c2416_clk)){
+	if(IS_ERR(mys3c2416_clk)){
 	
 		printk(KERN_INFO "Failed to get lcd clock source \n");
 	}
-	clk_enable(mys3c2416_clk);
+//	clk_enable(mys3c2416_clk);
+	clk_prepare_enable(mys3c2416_clk);
+	printk("got and enableed clock \ n");
+	usleep_range(1000, 1100);
 
+	clk_rate = clk_get_rate(mys3c2416_clk);
+	printk("%s : %d info->clk_rate = %ld\n",__func__,__LINE__,clk_rate);
 
 	//初始化LCD寄存器
 	mylcd_vidcon0 		= ioremap(0x4C800000,4);
@@ -236,7 +242,6 @@ static int __init mys3c2416_lcd_init(void)
 	//内核虚拟地址
 	//起始物理地址：smem_start
 	//起始内核虚拟地址：screen_base
-	
 	mys3c2416_lcd->screen_base = dma_alloc_writecombine(NULL, \
 			mys3c2416_lcd->fix.smem_len,  					  \
 			(dma_addr_t *)&mys3c2416_lcd->fix.smem_start,     \
@@ -260,11 +265,13 @@ static int __init mys3c2416_lcd_init(void)
 
 
 	//向核心层注册fb_info
+	ret = register_framebuffer(mys3c2416_lcd);
+	if (ret < 0) {
+		printk("Failed to register framebuffer device: %d\n",ret);
+	}
+	printk(KERN_INFO "%s : %d register_framebuffer\n",__func__,__LINE__);
 	
-	register_framebuffer(mys3c2416_lcd);
 	return 0;
-
-
 
 }
 
@@ -272,6 +279,13 @@ static int __init mys3c2416_lcd_init(void)
 static void __exit mys3c2416_lcd_exit(void)
 {
 	unregister_framebuffer(mys3c2416_lcd);
+
+	if (mys3c2416_clk) {
+		clk_disable_unprepare(mys3c2416_clk);
+		clk_put(mys3c2416_clk);
+		mys3c2416_clk = NULL;
+	}
+
 
 	dma_free_writecombine(NULL,               \
 			mys3c2416_lcd->fix.smem_len,      \

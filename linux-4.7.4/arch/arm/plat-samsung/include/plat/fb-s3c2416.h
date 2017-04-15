@@ -20,21 +20,27 @@ struct mys3c2416fb_hw {
 	unsigned long	vidtcon1;
 	unsigned long	vidtcon2;
 	unsigned long   wincon0;
-	unsigned long   wincon1;
+	unsigned long   wincon1;	//0x4c800018
+//	unsigned long 	res_1[3];
 	unsigned long   vidosd0a;
 	unsigned long   vidosd0b;
+//	unsigned long   res_2[1];
 	unsigned long   vidosd1a;
 	unsigned long   vidosd1b;
 	unsigned long   vidosd1c;
+//	unsigned long 	res_3[9];
 	unsigned long   vidw00add0b0;
 	unsigned long   vidw00add0b1;
 	unsigned long   vidw01add0;
+//	unsigned long 	res_4[3];
 	unsigned long   vidw00add1b0;
 	unsigned long   vidw00add1b1;
 	unsigned long   vidw01add1;
+//	unsigned long   res_5[3];
 	unsigned long   vidw00add2b0;
 	unsigned long   vidw00add2b1;
 	unsigned long   vidw01add2;
+//	unsigned long 	res_6[3];
 	unsigned long   vidintcon;
 	unsigned long   w1keycon0;
 	unsigned long   w1keycon1;
@@ -46,17 +52,22 @@ struct mys3c2416fb_hw {
 	unsigned long   w4keycon1;
 	unsigned long 	win0map;
 	unsigned long 	win1map;
-	unsigned long   wpalcon;
+//	unsigned long	res_7[3];
+	unsigned long   wpalcon;//0x4c8000e4
+//	unsigned long 	res_8[19];
 	unsigned long 	sysifcon0;
 	unsigned long   sysifcon1;
 	unsigned long 	dithmode;
 	unsigned long 	sifccon0;
 	unsigned long   sifccon1;
 	unsigned long 	sifccon2;
+//	unsigned long 	res_9[7];
 	unsigned long 	cputrigcon2;
+//	unsigned long 	res_10[168];
 	unsigned long   win0_plalette_ram;//0x4c800400-----0x4c8007fc  (0-255 address)
+//	unsigned long	res_11[256];
 	unsigned long   win1_plalette_ram;//0x4c800800-----0x4c800bfc  (0-255 address)
-
+//	unsigned long   res_12[256];
 };
 
 /* LCD description */

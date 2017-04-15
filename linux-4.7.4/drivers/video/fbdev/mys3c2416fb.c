@@ -154,6 +154,8 @@ static int mys3c2416fb_check_var(struct fb_var_screeninfo *var, struct fb_info *
 	var->transp.length = 0;
 
 	printk(KERN_INFO "%s : %d var->bits_per_pixel = %#x ........ \n",__func__,__LINE__,var->bits_per_pixel);
+
+	/* set r/g/b positions */
 	switch(var->bits_per_pixel){
 		case 16:
 			if (display->mylcd_hw->vidcon0 & S3C2416_VIDCON0_FRM565) {
@@ -196,11 +198,15 @@ static unsigned int mys3c2416fb_calc_pixclk(struct mys3c2416fb_info *fbi, unsign
 	 *
 	 * Hz -> picoseconds is / 10^-12
 	 */
+
+	printk(KERN_INFO "%s : %d clk=%ld div=%ld \n",__func__,__LINE__,clk,div);
+
 	div = (unsigned long long)clk * pixclk;
 	div >>= 12;			/* div / 2^12 */
 	do_div(div, 625 * 625UL * 625); /* div / 5^12 */
 
 	printk(KERN_INFO "pixclk %ld, divisor is %ld\n", pixclk, (long)div);
+
 	return div;
 }
 /* mys3c2416fb_calculate_tft_lcd_regs
@@ -214,6 +220,7 @@ static void mys3c2416fb_calculate_tft_lcd_regs(const struct fb_info *info,
 	const struct fb_var_screeninfo *var = &info->var;
 
 	printk(KERN_INFO "%s : %d var->bits_per_pixel = %d ........ \n",__func__,__LINE__,var->bits_per_pixel);
+	printk(KERN_INFO "%s : %d fbi->io = %p ........ \n",__func__,__LINE__,fbi->io);
 
 	switch (var->bits_per_pixel) {
 	case 1:
@@ -231,10 +238,14 @@ static void mys3c2416fb_calculate_tft_lcd_regs(const struct fb_info *info,
 		regs->vidcon1 &= ~S3C2410_LCDCON5_HWSWP;
 		break;
 	case 16:
-		regs->wincon0 |= S3C2416_WINCON0_TFT16BPP;
-		regs->wincon0 &= ~S3C2416_WINCON0_BSWP;
-		regs->wincon0 |= S3C2416_WINCON0_HBSWP;
+		regs->wincon0 |= S3C2416_WINCON0_TFT16BPP | (1 << 0);
+		regs->wincon0 &= ~S3C2416_WINCON0_BUFSEL;
+		regs->wincon0 |= S3C2416_WINCON0_HAWSWP;
 
+
+		regs->wincon1 = (5<<2)|(1<<16)|(1<<6);
+
+		printk("%s: %d case 16 \n",__func__,__LINE__);
 		break;
 	case 32:
 		regs->vidcon0 |= S3C2410_LCDCON1_TFT24BPP;
@@ -242,35 +253,51 @@ static void mys3c2416fb_calculate_tft_lcd_regs(const struct fb_info *info,
 		break;
 	default:
 		/* invalid pixel depth */
-		dev_err(fbi->dev, "invalid bpp %d\n", var->bits_per_pixel);
+		printk(KERN_INFO "invalid bpp %d\n", var->bits_per_pixel);
 	}
 	/* update X/Y info */
-	printk(KERN_INFO "setting vert: up=%d, low=%d, sync=%d\n",
+	printk(KERN_INFO "%s : %d setting vert: up=%d, low=%d, sync=%d\n",__func__,__LINE__,
 		var->upper_margin, var->lower_margin, var->vsync_len);
 
-	printk(KERN_INFO "setting horz: lft=%d, rt=%d, sync=%d\n",
+	printk(KERN_INFO "%s : %d setting horz: lft=%d, rt=%d, sync=%d\n",__func__,__LINE__,
 		var->left_margin, var->right_margin, var->hsync_len);
 
 
 
-	regs->vidosd0a = 0x0;
-	regs->vidosd0b = ((480-1)<<11) | ((272-1)<<0);
-	
+	regs->vidosd0a = 0x0;  //左边坐标
+	regs->vidosd0b = ((480-1)<<11) | ((272-1)<<0);//右边坐标
 
-	regs->vidtcon0 = S3C2416_VIDTCON2_LINEVAL(var->yres - 1) |
-			S3C2416_VIDTCON0_VBPD(var->upper_margin - 1) |
-			S3C2416_VIDTCON0_VFPD(var->lower_margin - 1) |
-			S3C2416_VIDTCON0_VSPW(var->vsync_len - 1);
+	regs->vidosd1a = 0x0;  //左边坐标
+	regs->vidosd1b = ((480-1)<<11) | ((272-1)<<0);//右边坐标
 
-	regs->vidtcon1 = S3C2416_VIDTCON2_HOZVAL(var->xres - 1) |
-			S3C2416_VIDTCON1_VBPD(var->upper_margin - 1) |
-			S3C2416_VIDTCON1_VFPD(var->lower_margin - 1) |
-			S3C2416_VIDTCON1_VSPW(var->vsync_len - 1);
+
+	regs->vidtcon2 = ((272-1)<<11) | ((480-1)<<0);
+
 
 
 	writel(regs->vidosd0a,fbi->io + S3C2416_VIDOSD0A);
 	writel(regs->vidosd0b,fbi->io + S3C2416_VIDOSD0B);
+
+	regs->vidtcon0 = S3C2416_VIDTCON0_VBPD(var->upper_margin - 1) |
+					  S3C2416_VIDTCON0_VFPD(var->lower_margin - 1) |
+					  S3C2416_VIDTCON0_VSPW(var->vsync_len - 1);
+
+	regs->vidtcon1 = S3C2416_VIDTCON1_VBPD(var->left_margin - 1) |
+					  S3C2416_VIDTCON1_VFPD(var->right_margin - 1) |
+					  S3C2416_VIDTCON1_VSPW(var->hsync_len - 1);
+
 	
+	printk(KERN_INFO "%s : %d regs->vidtcon0 = %#x\n",__func__,__LINE__,regs->vidtcon0);
+	printk(KERN_INFO "%s : %d regs->vidtcon1 = %#x\n",__func__,__LINE__,regs->vidtcon1);
+
+	printk(KERN_INFO "%s : %d regs->wincon0 = %#x\n",__func__,__LINE__,regs->wincon0);
+	printk(KERN_INFO "%s : %d regs->wincon1 = %#x\n",__func__,__LINE__,regs->wincon1);
+	printk(KERN_INFO "%s : %d regs->vidcon0 = %#x\n",__func__,__LINE__,regs->vidcon0);
+	printk(KERN_INFO "%s : %d regs->vidcon1 = %#x\n",__func__,__LINE__,regs->vidcon1);
+	printk(KERN_INFO "%s : %d regs->vidtcon2 = %#x\n",__func__,__LINE__, regs->vidtcon2);
+
+
+
 	writel(regs->vidtcon0,fbi->io + S3C2416_VIDTCON0);
 	writel(regs->vidtcon1,fbi->io + S3C2416_VIDTCON1);
 
@@ -284,7 +311,7 @@ static void mys3c2416fb_calculate_tft_lcd_regs(const struct fb_info *info,
 
 	printk(KERN_INFO "%s : %d vidtcon0 = %#x\n",__func__,__LINE__,readl(fbi->io + S3C2416_VIDTCON0));
 	printk(KERN_INFO "%s : %d vidosd0a = %#x\n",__func__,__LINE__,readl(fbi->io + S3C2416_VIDOSD0A));
-	printk(KERN_INFO "%s : %d vidosd0a = %#x\n",__func__,__LINE__,readl(fbi->io + S3C2416_VIDOSD0A));
+	printk(KERN_INFO "%s : %d vidosd0b = %#x\n",__func__,__LINE__,readl(fbi->io + S3C2416_VIDOSD0B));
 
 }
 
@@ -312,9 +339,14 @@ static void mys3c2416fb_set_lcdaddr(struct fb_info *info)
 	saddr2 = info->fix.smem_start + (info->fix.line_length * info->var.yres);
 	saddr3 = (0<<13) | ((480*2) << 0);//S3C2416_OFFSIZE(0) | S3C2416_PAGEWIDTH((info->fix.line_length/2)&0x7ff);
 
-	dprintk("VIDW00ADD0B0 = 0x%08lx\n", saddr1);
-	dprintk("VIDW00ADD1B0 = 0x%08lx\n", saddr2);
-	dprintk("VIDW00ADD2B0 = 0x%08lx\n", saddr3);
+	printk(KERN_INFO "info->fix.smem_start = %#x \n",info->fix.smem_start);
+	printk(KERN_INFO "info->fix.line_length = %#x \n",info->fix.line_length);
+	printk(KERN_INFO "info->fix.smem_start = %#x \n",info->var.yres);
+	printk(KERN_INFO "regs = %p \n",fbi->io);
+
+	printk(KERN_INFO "VIDW00ADD0B0 = 0x%08lx\n", saddr1);
+	printk(KERN_INFO "VIDW00ADD1B0 = 0x%08lx\n", saddr2);
+	printk(KERN_INFO "VIDW00ADD2B0 = 0x%08lx\n", saddr3);
 
 	writel(saddr1, regs + S3C2416_VIDW00ADD0B0);
 	writel(saddr2, regs + S3C2416_VIDW00ADD1B0);
@@ -357,7 +389,6 @@ static void mys3c2416fb_activate_var(struct fb_info *info)
 	printk(KERN_INFO "%s: var->yres  = %d\n", __func__, var->yres);
 	printk(KERN_INFO "%s: var->bpp   = %d\n", __func__, var->bits_per_pixel);
 
-//	if(type == S3C2416_VIDCON0_TFT){
 	if(type == S3C2416_VIDCON0_FRM565){
 		mys3c2416fb_calculate_tft_lcd_regs(info, &fbi->regs);
 		--clkdiv;
@@ -380,7 +411,6 @@ static void mys3c2416fb_activate_var(struct fb_info *info)
 	/* write new registers */
 
 	printk("new register set:\n");
-	printk("vidcon0 [1] = 0x%08lx\n", fbi->regs.vidcon0);
 	printk("vidcon1 [2] = 0x%08lx\n", fbi->regs.vidcon1);
 	printk("vidtcon0[3] = 0x%08lx\n", fbi->regs.vidtcon0);
 	printk("vidtcon1[4] = 0x%08lx\n", fbi->regs.vidtcon1);
@@ -397,7 +427,7 @@ static void mys3c2416fb_activate_var(struct fb_info *info)
 
 static int mys3c2416fb_set_par(struct fb_info *info)
 {
-	struct fb_var_screeninfo *var = &info->var;
+	struct fb_var_screeninfo *var = &info->var;/
 	printk(KERN_INFO "%s : %d var->bits_per_pixel = %d ........ \n",__func__,__LINE__,var->bits_per_pixel);
 	switch(var->bits_per_pixel){
 		case 32:
@@ -433,13 +463,16 @@ static void mys3c2416fb_lcd_enable(struct mys3c2416fb_info *fbi, int enable)
 
 	local_irq_save(flags);
 
-	if (enable)
+	if (enable){
 		fbi->regs.vidcon0 |= S3C2416_VIDCON0_ENVID;
-	else
+		printk(KERN_INFO "%s : %d enable fbi->regs.vidcon0 = %#x \n",__func__,__LINE__,fbi->regs.vidcon0);
+	}else{
 		fbi->regs.vidcon0 &= ~S3C2416_VIDCON0_ENVID;
-
+		printk(KERN_INFO "%s : %d disenable fbi->regs.vidcon0 = %#x \n",__func__,__LINE__,fbi->regs.vidcon0);
+	}
 	writel(fbi->regs.vidcon0, fbi->io + S3C2416_VIDCON0);
 
+	printk(KERN_INFO "%s : %d  fbi->io = %p \n",__func__,__LINE__,fbi->io);
 	local_irq_restore(flags);
 }
 
@@ -462,10 +495,14 @@ static int mys3c2416fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct mys3c2416fb_info *fbi = info->par;
 	void __iomem *tpal_reg = fbi->io;
+	unsigned long val_wpalcon = 0;
+	
 
 	printk(KERN_INFO "%s : %d blank(mode=%d, info=%p)\n", __func__,__LINE__,blank_mode, info);
 
 	tpal_reg += S3C2416_WPALCON;
+	val_wpalcon = readl(tpal_reg);
+
 
 	if (blank_mode == FB_BLANK_POWERDOWN){
 		mys3c2416fb_lcd_enable(fbi, 0);
@@ -476,10 +513,13 @@ static int mys3c2416fb_blank(int blank_mode, struct fb_info *info)
 	}
 
 	if (blank_mode == FB_BLANK_UNBLANK){
-		writel(0x0, tpal_reg);
+		val_wpalcon &= ~(1 << 9);
+		writel(val_wpalcon, tpal_reg);
+		printk(KERN_INFO "%s : %d setting TPAL to output \n",__func__,__LINE__);
 	}else {
-		printk(KERN_INFO "setting TPAL to output \n");
-		writel(S3C2416_WPALCON_EN, tpal_reg);
+		printk(KERN_INFO "%s : %d setting TPAL to output \n",__func__,__LINE__);
+		val_wpalcon |= (1 << 9);
+		writel(val_wpalcon, tpal_reg);
 	}
 
 	return 0;
@@ -530,11 +570,11 @@ static int mys3c2416fb_setcolreg(unsigned regno,
 	void __iomem *regs = fbi->io;
 	unsigned int val;
 
-	dprintk(KERN_INFO "%s : %d setcol: regno=%d, rgb=%d,%d,%d \n",__func__,__LINE__, regno, red, green, blue); 
-	dprintk(KERN_INFO "%s : %d info->fix.visual = %d \n",__func__,__LINE__, info->fix.visual); 
+	printk(KERN_INFO "%s : %d setcol: regno=%d, rgb=%d,%d,%d \n",__func__,__LINE__, regno, red, green, blue); 
+	printk(KERN_INFO "%s : %d info->fix.visual = %d \n",__func__,__LINE__, info->fix.visual); 
 
 	switch (info->fix.visual) {
-	case FB_VISUAL_TRUECOLOR:
+	case FB_VISUAL_TRUECOLOR: // 2
 		/* true-colour, use pseudo-palette */
 
 		if (regno < 16) {
@@ -559,7 +599,7 @@ static int mys3c2416fb_setcolreg(unsigned regno,
 		}
 		break;
 
-	case FB_VISUAL_PSEUDOCOLOR:
+	case FB_VISUAL_PSEUDOCOLOR: //3 
 		if (regno < 256) {
 			/* currently assume RGB 5-6-5 mode */
 
@@ -578,6 +618,7 @@ static int mys3c2416fb_setcolreg(unsigned regno,
 		return 1;	/* unknown type */
 	}
 	
+	printk("%s : %d \n",__func__,__LINE__);
 	return 0;
 }
 
@@ -679,14 +720,21 @@ static irqreturn_t mys3c2416fb_irq(int irq, void *dev_id)
  */
 static int mys3c2416fb_map_video_memory(struct fb_info *info)
 {
+
+	printk(KERN_INFO "%s : %d \n",__func__,__LINE__);
 	struct mys3c2416fb_info *fbi = info->par;
 	dma_addr_t map_dma;
+
+
 	unsigned map_size = PAGE_ALIGN(info->fix.smem_len);
 
+
+	printk(KERN_INFO "%s : %d info->fix.smem_len = %ld \n",__func__,__LINE__,info->fix.smem_len);
 	printk(KERN_INFO "map_video_memory(fbi=%p) map_size %u\n", fbi, map_size);
 
+
 	info->screen_base = dma_alloc_wc(fbi->dev, map_size, &map_dma, GFP_KERNEL);
-	printk(KERN_INFO "%s : %d info->screen_base = %p\n",__func__,__LINE__, info->screen_base);
+	printk(KERN_INFO "%s : %d info->screen_base = %p \n",__func__,__LINE__, info->screen_base);
 
 	if (info->screen_base) {
 		/* prevent initial garbage on screen */
@@ -722,6 +770,58 @@ static inline void modify_gpio(void __iomem *reg, unsigned long set, unsigned lo
 /*
  * mys3c2416fb_init_registers - Initialise all LCD-related registers
  */
+#if 1
+static int mys3c2416fb_init_registers(struct fb_info *info)
+{
+	struct mys3c2416fb_info *fbi = info->par;
+	struct mys3c2416fb_mach_info *mach_info = dev_get_platdata(fbi->dev);
+	unsigned long flags;
+	void __iomem *regs = fbi->io;
+	void __iomem *tpal;
+
+	unsigned long wpalcon_val = 0;
+
+	printk("%s : %d regs = %p \n",__func__,__LINE__,regs);
+
+	
+	tpal = regs + S3C2416_WPALCON;
+	wpalcon_val = readl(tpal);
+	wpalcon_val	|= (1 << 9) | (6 << 3) | (6 << 0);
+	writel(wpalcon_val, tpal);
+
+	/* Initialise LCD with values from haret */
+
+	printk("%s : %d gpcup 	    = %#x \n",__func__,__LINE__,mach_info->gpcup);
+	printk("%s : %d gpcup_mask  = %#x \n",__func__,__LINE__,mach_info->gpcup_mask);
+	printk("%s : %d gpccon 	    = %#x \n",__func__,__LINE__,mach_info->gpccon);
+	printk("%s : %d gpccon_mask = %#x \n",__func__,__LINE__,mach_info->gpccon_mask);
+	printk("%s : %d gpdup 		= %#x \n",__func__,__LINE__,mach_info->gpdup);
+	printk("%s : %d gpdup_mask  = %#x \n",__func__,__LINE__,mach_info->gpdup_mask);
+	printk("%s : %d gpdcon 		= %#x \n",__func__,__LINE__,mach_info->gpdcon);
+	printk("%s : %d gpdup_mask 	= %#x \n",__func__,__LINE__,mach_info->gpdcon_mask);
+
+
+	local_irq_save(flags);
+	/* modify the gpio(s) with interrupts set (bjd) */
+	modify_gpio(S3C2416_GPCUP,  mach_info->gpcup,  mach_info->gpcup_mask);
+	modify_gpio(S3C2416_GPCCON, mach_info->gpccon, mach_info->gpccon_mask);
+	modify_gpio(S3C2416_GPDUP,  mach_info->gpdup,  mach_info->gpdup_mask);
+	modify_gpio(S3C2416_GPDCON, mach_info->gpdcon, mach_info->gpdcon_mask);
+	local_irq_restore(flags);
+
+
+//	printk(KERN_INFO "replacing TPAL %08x\n", readl(tpal));
+	/* ensure temporary palette disabled */
+//	writel(0x00, tpal);
+
+	wpalcon_val = readl(tpal);
+	wpalcon_val &= ~(1 << 9);
+	writel(wpalcon_val, tpal);
+
+	return 0;
+}
+
+#else
 static int mys3c2416fb_init_registers(struct fb_info *info)
 {
 	struct mys3c2416fb_info *fbi = info->par;
@@ -862,15 +962,9 @@ static int mys3c2416fb_init_registers(struct fb_info *info)
 	/* ensure temporary palette disabled */
 	writel(0x00, tpal);
 
-
-
-
-
-
-
 	return 0;
 }
-
+#endif
 
 
 #ifdef CONFIG_CPU_FREQ
@@ -918,7 +1012,9 @@ static inline void mys3c2416fb_cpufreq_deregister(struct mys3c2416fb_info *info)
 #endif
 
 
-static const char driver_name[] = "mys3c2416fb";
+static const char driver_name[] = "mys3c2416-lcd";
+
+
 static int mys3c2416fb_probe(struct platform_device *pdev)
 {
 	struct mys3c2416fb_info *info;
@@ -934,15 +1030,59 @@ static int mys3c2416fb_probe(struct platform_device *pdev)
 	
 	u32 vidcon0;
 
+
+#if 0
+	volatile unsigned long *virt_c   = NULL;
+	volatile unsigned long *GPCCON = NULL;
+	volatile unsigned long *GPCDAT = NULL;
+	volatile unsigned long *GPCUP  = NULL;
+
+	volatile unsigned long tem_dat = 0;
+
+	virt_c = (volatile unsigned long *)ioremap(0x56000020,0x10);
+	if(virt_c == NULL){
+		printk(KERN_INFO "ioremap error \n");
+		return -1;
+	}
+	GPCCON = (virt_c + 0);
+	GPCDAT = (virt_c + 1);
+	GPCUP  = (virt_c + 2);
+
+	tem_dat = readl(GPCCON);
+	tem_dat &= ~(3 << 0);
+	tem_dat |= (1 << 0);
+	writel(tem_dat,GPCCON);
+
+	tem_dat = readl(GPCUP);
+	tem_dat &= ~(3 << 0);
+	tem_dat |= (2 << 0);
+	writel(tem_dat,GPCUP);
+
+	tem_dat = readl(GPCDAT);
+	tem_dat |= (1 << 0);
+	writel(tem_dat,GPCDAT);
+
+
+
+//	writel(~(0x3 << 0),GPCCON);
+//	writel( (0x1 << 0),GPCCON);
+//	writel(~(0x3 << 0),GPCUP);
+//	writel( (0x2 << 0),GPCUP);
+//	writel( (0x1 << 0),GPCDAT);
+
+	printk(KERN_INFO "GPCCON = %#x \n",*GPCCON);
+#endif
+
+
 	mach_info = dev_get_platdata(&pdev->dev);
 	if(mach_info == NULL){
-		dev_err(&pdev->dev, "no platform data for lcd ,cannot attach \n");
+		printk(KERN_INFO "no platform data for lcd ,cannot attach \n");
 		return -EINVAL;
 	}
 	printk(KERN_INFO "mach_info->displays->name = %s \n",mach_info->displays->name);
 
 	if(mach_info->default_display >= mach_info->num_displays){
-		dev_err(&pdev->dev, "default is %d but only %d displays \n",
+		printk(KERN_INFO "default is %d but only %d displays \n",
 				mach_info->default_display, mach_info->num_displays);
 		return -EINVAL;
 	}
@@ -953,28 +1093,29 @@ static int mys3c2416fb_probe(struct platform_device *pdev)
 
 	irq = platform_get_irq(pdev, 0);
 	if(irq < 0){
-		dev_err(&pdev->dev, "no irq for device \n");
+		printk(KERN_INFO "no irq for device \n");
 		return -EINVAL;
 	}
 	printk(KERN_INFO "s3c2416 used irq = %d \n",irq);
 
-	/*得到具体 LCD 设备的私有数据*/
+	/*分配 LCD 设备的私有数据*/
 	fbinfo = framebuffer_alloc(sizeof(struct mys3c2416fb_info),&pdev->dev);
 	if(!fbinfo){
 		return -ENOMEM;
 	}
 	printk(KERN_INFO "fbinfo.fix.smem_start = %ld...... \n",fbinfo->fix.smem_start);
 	printk(KERN_INFO "fbinfo.fix.smem_len = %ld...... \n",fbinfo->fix.smem_len);
-	printk(KERN_INFO "fbinfo->screen_base = %p...... \n",fbinfo->screen_base);
+	printk(KERN_INFO "fbinfo->screen_base = %#x...... \n",fbinfo->screen_base);
 
 	platform_set_drvdata(pdev, fbinfo);
 
 	info = fbinfo->par;
 	info->dev = &pdev->dev;
+//	info->drv_type = 0;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if(res == NULL){
-		dev_err(&pdev->dev, "failed to get memory registers \n");
+		printk(KERN_INFO "failed to get memory registers \n");
 		ret = -ENXIO;
 		goto dealloc_fb;
 	}
@@ -987,13 +1128,13 @@ static int mys3c2416fb_probe(struct platform_device *pdev)
 	info->mem = request_mem_region(res->start, size, pdev->name);
 	
 	if(info->mem == NULL){
-		dev_err(&pdev->dev, "failed to get memory region \n");
+		printk(KERN_INFO  "failed to get memory region \n");
 		goto dealloc_fb;
 	}
-    /* info->io 就是LCD寄存器的首地址 */
+    /* info->io 就是LCD寄存器的虚拟 首地址 */
 	info->io = ioremap(res->start, size);
 	if(info->io == NULL){
-		dev_err(&pdev->dev, "ioremap() of registers failed \n ");
+		printk(KERN_INFO "ioremap() of registers failed \n ");
 		ret = -ENXIO;
 		goto release_mem;
 	}
@@ -1008,7 +1149,10 @@ static int mys3c2416fb_probe(struct platform_device *pdev)
 
 	/*Stop the video*/
 	vidcon0 = readl(info->io + S3C2416_VIDCON0);
-	writel(vidcon0 & ~0x3,info->io + S3C2416_VIDCON0);
+	printk("vidcon0 .....[1] = %#x \n",vidcon0);
+	vidcon0 &= ~(0x3 << 0);
+	writel(vidcon0,info->io + S3C2416_VIDCON0);
+	printk("vidcon0 .....[2] = %#x \n",vidcon0);
 
 /*fix params */
 	fbinfo->fix.type	    	= FB_TYPE_PACKED_PIXELS;
@@ -1027,23 +1171,31 @@ static int mys3c2416fb_probe(struct platform_device *pdev)
 	fbinfo->flags 				= FBINFO_FLAG_DEFAULT;
 	fbinfo->pseudo_palette 		= &info->pseudo_pal;
 
+
+	printk(KERN_INFO "###########################\n");
+
+
 	for (i = 0; i < 256; i++)
 		info->palette_buffer[i] = PALETTE_BUFF_CLEAR;
 
 	ret = request_irq(irq, mys3c2416fb_irq, 0, pdev->name, info);
 	if (ret) {
-		dev_err(&pdev->dev, "cannot get irq %d - err %d\n", irq, ret);
+		printk(KERN_INFO "cannot get irq %d - err %d\n", irq, ret);
 		ret = -EBUSY;
 		goto release_regs;
 	}
+	
+	printk(KERN_INFO "can get irq %d - ret  = %d\n", irq, ret);
+	
 
 	info->clk = clk_get(NULL, "lcd");
 	if (IS_ERR(info->clk)) {
-		dev_err(&pdev->dev, "failed to get lcd clock source\n");
+		printk(KERN_INFO "failed to get lcd clock source\n");
 		ret = PTR_ERR(info->clk);
 		goto release_irq;
 	}
-	printk(KERN_INFO "%s : %d info->clk = %ld \n",__func__,__LINE__,info->clk);
+
+	printk(KERN_INFO "can  get lcd clock source\n");
 
 	clk_prepare_enable(info->clk);
 	printk("got and enabled clock\n");
@@ -1067,48 +1219,52 @@ static int mys3c2416fb_probe(struct platform_device *pdev)
 	printk("%s : %d mach_info->num_displays = %ld\n",__func__,__LINE__,mach_info->num_displays);
 
 
+
 	/* Initialize video memory */
 	ret = mys3c2416fb_map_video_memory(fbinfo);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to allocate video RAM: %d\n", ret);
+		printk(KERN_INFO "Failed to allocate video RAM: %d\n", ret);
 		ret = -ENOMEM;
 		goto release_clock;
 	}
 
-	printk(KERN_INFO "got video memory\n");
+
+	printk(KERN_INFO "%s : %d got video memory ret = %d \n",__func__,__LINE__,ret);
+
 
 	fbinfo->var.xres = display->xres;
 	fbinfo->var.yres = display->yres;
 	fbinfo->var.bits_per_pixel = display->bpp;
 
+
 	mys3c2416fb_init_registers(fbinfo);
 
 	mys3c2416fb_check_var(&fbinfo->var, fbinfo);
-
 	ret = mys3c2416fb_cpufreq_register(info);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "Failed to register cpufreq\n");
+		printk(KERN_INFO "Failed to register cpufreq\n");
 		goto free_video_memory;
 	}
-
 	printk(KERN_INFO "%s : %d mys3c2416fb_cpufreq_register\n",__func__,__LINE__);
+
 
 	ret = register_framebuffer(fbinfo);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "Failed to register framebuffer device: %d\n",
-			ret);
+		printk(KERN_INFO "Failed to register framebuffer device: %d\n",ret);
 		goto free_cpufreq;
 	}
+
 	printk(KERN_INFO "%s : %d register_framebuffer\n",__func__,__LINE__);
 	
 	/* create device files*/
 	ret = device_create_file(&pdev->dev, &dev_attr_debug);
 	if (ret){
-		dev_err(&pdev->dev, "failed to add debug attribute\n");
+		printk(KERN_INFO "failed to add debug attribute\n");
 	}
 
-	dev_info(&pdev->dev, "fb%d: %s frame buffer device\n", fbinfo->node, fbinfo->fix.id);
+	printk(KERN_INFO "fb%d: %s frame buffer device\n", fbinfo->node, fbinfo->fix.id);
 	mys3c2416fb_lcd_enable(info, 1);
+
 
 	return 0;
 
@@ -1175,18 +1331,23 @@ static struct platform_driver mys3c2416fb_driver = {
 	.resume   = mys3c2416fb_resume,
 	.driver   = {
 		.name = "mys3c2416-lcd",
+		.owner = THIS_MODULE,
 	},
-
 };
 
+#if 1
+module_platform_driver(mys3c2416fb_driver);
 
+
+
+#else
 int __init mys3c2416fb_init(void)
 {
 	int ret = platform_driver_register(&mys3c2416fb_driver);
 	if(ret == 0){
-		pr_debug("platform_driver_register lcd error!!\n");
+		printk(KERN_INFO "platform_driver_register lcd error!!\n");
 	}else{
-		pr_debug("platform_driver_register lcd sucess!!\n");
+		printk(KERN_INFO "platform_driver_register lcd sucess!!\n");
 	}
 	return ret;
 }
@@ -1199,6 +1360,8 @@ static void  __exit mys3c2416fb_exit(void)
 
 module_init(mys3c2416fb_init);
 module_exit(mys3c2416fb_exit);
+#endif
+
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("zhuczloveai910@gmail.com");

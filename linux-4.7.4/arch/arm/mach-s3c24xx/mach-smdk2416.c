@@ -227,12 +227,14 @@ static struct s3c_fb_pd_win smdk2416_fb_win[] = {
 		.max_bpp		= 32,
 		.xres           = 480,//800,
 		.yres           = 272,//480,
+		.virtual_x		= 544,
+		.virtual_y		= 480,
 	},
 };
 
 static struct fb_videomode smdk2416_lcd_timing = {
 	.name           = "T43 480*272",
-	.pixclock		= 30000,
+	.pixclock		= 100000,
 	.left_margin	= 2,
 	.right_margin	= 2,
 	.upper_margin	= 2,
@@ -268,8 +270,8 @@ static struct s3c_fb_platdata smdk2416_fb_platdata = {
 	.win[0]		= &smdk2416_fb_win[0],
 	.vtiming	= &smdk2416_lcd_timing,
 	.setup_gpio	= s3c2416_fb_gpio_setup_24bpp,
-	.vidcon0	= VIDCON0_VIDOUT_RGB | VIDCON0_PNRMODE_RGB,
-	.vidcon1	= VIDCON1_INV_HSYNC | VIDCON1_INV_VSYNC,
+	.vidcon0	= 0x000003b3,//VIDCON0_VIDOUT_RGB | VIDCON0_PNRMODE_RGB,
+	.vidcon1	= 0x00000060,//VIDCON1_INV_HSYNC | VIDCON1_INV_VSYNC,
 };
 
 static struct s3c_sdhci_platdata smdk2416_hsmmc0_pdata __initdata = {
@@ -286,8 +288,8 @@ static struct s3c_sdhci_platdata smdk2416_hsmmc1_pdata __initdata = {
 
 /*-------------------TODO zhuchengzhi----------------------*/
 static struct mys3c2416fb_hw  mys3c2416fb_reg_val = {
-	.vidcon0 	  = 0x000003b3,    //0x4c800000
-	.vidcon1      = 0x00000060,    //the video data is fetched at VCLK rising edge 
+	.vidcon0 	  = 0x000000b0,//0x000003b3,    //0x4c800000
+	.vidcon1      = 0x00000020,    //the video data is fetched at VCLK rising edge 
 	.vidtcon0     = 0x00010109,    //Vertical
 	.vidtcon1     = 0x00010128,    //Horizontal
 	.vidtcon2     = 0x000881e0,    //size of display
@@ -358,14 +360,14 @@ static struct mys3c2416fb_mach_info mys3c2416_fb_platdata = {
 	.default_display = 0,
 
 	.gpcup 		 	 = 0xaaaa02aa,
-	.gpcup_mask  	 = 0xffffffff,
-	.gpccon 	 	 = 0xaaaa02aa,
-	.gpccon_mask 	 = 0xffffffff,
+	.gpcup_mask  	 = 0x00000000,
+	.gpccon 	 	 = 0xaaaa02a9,
+	.gpccon_mask 	 = 0x00000000,
 
 	.gpdup 		 	 = 0xaaaaaaaa,
-	.gpdup_mask  	 = 0xffffffff,
+	.gpdup_mask  	 = 0x00000000,
 	.gpdcon 	 	 = 0xaaaaaaaa,
-	.gpdcon_mask 	 = 0xffffffff,
+	.gpdcon_mask 	 = 0x00000000,
 
 //	.lpcsel =, 
 };

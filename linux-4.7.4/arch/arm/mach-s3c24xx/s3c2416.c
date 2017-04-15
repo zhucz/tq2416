@@ -93,7 +93,8 @@ int __init s3c2416_init(void)
 	s3c_i2c0_setname("s3c2440-i2c");
 	s3c_i2c1_setname("s3c2440-i2c");
 
-	s3c_fb_setname("s3c2443-fb");
+//	s3c_fb_setname("s3c2443-fb");
+	s3c_fb_setname("s3c2416-fb");
 
 	s3c_adc_setname("s3c2416-adc");
 	s3c_rtc_setname("s3c2416-rtc");

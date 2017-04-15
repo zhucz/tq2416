@@ -23,7 +23,7 @@
 #define VIDCON0_INTERLACE			(1 << 29)
 #define VIDCON0_VIDOUT_MASK			(0x7 << 26)
 #define VIDCON0_VIDOUT_SHIFT			26
-#define VIDCON0_VIDOUT_RGB			(0x0 << 26)
+#define VIDCON0_VIDOUT_RGB			(0x0 << 22)//(0x0 << 26)
 #define VIDCON0_VIDOUT_TV			(0x1 << 26)
 #define VIDCON0_VIDOUT_I80_LDI0			(0x2 << 26)
 #define VIDCON0_VIDOUT_I80_LDI1			(0x3 << 26)
@@ -361,10 +361,10 @@
 #define VIDINTCON0_INT_FIFO_SHIFT		0
 #define VIDINTCON0_INT_ENABLE			(1 << 0)
 
-#define VIDINTCON1				0x134
-#define VIDINTCON1_INT_I80			(1 << 2)
-#define VIDINTCON1_INT_FRAME			(1 << 1)
-#define VIDINTCON1_INT_FIFO			(1 << 0)
+#define VIDINTCON1						0xAC//0x134 zhuchengzhi
+#define VIDINTCON1_INT_I80				(1 << 2)
+#define VIDINTCON1_INT_FRAME			(0xf << 13)//(1 << 1)
+#define VIDINTCON1_INT_FIFO				(1 << 0)
 
 /* Window colour-key control registers */
 #define WKEYCON					0x140
